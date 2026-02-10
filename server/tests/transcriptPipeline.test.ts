@@ -4,6 +4,7 @@ import {
   extractShareUrl,
   extractVideoUrlFromDouyinRouterData,
   isLikelyProtectedDouyinMediaUrl,
+  isLikelyMediaUrlForAsr,
 } from "../src/services/transcriptPipeline.js";
 
 test("extractShareUrl should parse normal https url", () => {
@@ -78,4 +79,12 @@ test("isLikelyProtectedDouyinMediaUrl should detect aweme play urls", () => {
 
 test("isLikelyProtectedDouyinMediaUrl should ignore generic mp3 urls", () => {
   assert.equal(isLikelyProtectedDouyinMediaUrl("https://example.com/audio/test.mp3"), false);
+});
+
+test("isLikelyMediaUrlForAsr should reject douyin home page", () => {
+  assert.equal(isLikelyMediaUrlForAsr("https://www.douyin.com/home"), false);
+});
+
+test("isLikelyMediaUrlForAsr should accept aweme play url", () => {
+  assert.equal(isLikelyMediaUrlForAsr("https://aweme.snssdk.com/aweme/v1/play/?video_id=abc"), true);
 });

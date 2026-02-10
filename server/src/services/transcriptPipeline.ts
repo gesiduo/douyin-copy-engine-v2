@@ -97,6 +97,27 @@ export function isLikelyProtectedDouyinMediaUrl(url: string): boolean {
   );
 }
 
+export function isLikelyMediaUrlForAsr(url: string): boolean {
+  const lower = url.toLowerCase();
+  if (isLikelyDirectMediaUrl(url) || isAwemePlayableApiUrl(url)) {
+    return true;
+  }
+  if (/\.(m3u8|mpd)(\?|$)/i.test(lower)) {
+    return true;
+  }
+  if (lower.includes("/api/v") && (lower.includes("play") || lower.includes("stream"))) {
+    return true;
+  }
+  return false;
+}
+
+function truncateForLog(input: string, maxLength = 180): string {
+  if (input.length <= maxLength) {
+    return input;
+  }
+  return `${input.slice(0, maxLength)}...`;
+}
+
 function extractRouterDataJson(html: string): string | undefined {
   const match = html.match(/window\._ROUTER_DATA\s*=\s*([\s\S]*?)<\/script>/i);
   if (!match?.[1]) {
@@ -236,9 +257,15 @@ export class TranscriptPipeline {
         const data = (await response.json()) as ResolverResponse & Record<string, unknown>;
         const videoUrl = this.pickVideoUrlFromResolverResponse(data);
         if (videoUrl?.trim()) {
-          return this.normalizeAsrMediaUrl(videoUrl.trim());
+          const normalized = await this.normalizeAsrMediaUrl(videoUrl.trim());
+          if (isLikelyMediaUrlForAsr(normalized)) {
+            return normalized;
+          }
+          resolverErrorMessage = `解析服务返回的URL不是媒体直链: ${truncateForLog(normalized)}`;
         }
-        resolverErrorMessage = "解析服务未返回视频地址。";
+        if (!resolverErrorMessage) {
+          resolverErrorMessage = "解析服务未返回视频地址。";
+        }
       } catch (error) {
         if (error instanceof PipelineError) {
           resolverErrorMessage = error.message;
@@ -284,12 +311,35 @@ export class TranscriptPipeline {
     }
 
     const mediaUrlForAsr = this.prepareAsrMediaUrl(videoUrl, asrApiUrl, baseUrl);
+    const mediaUrlCandidates = mediaUrlForAsr === videoUrl ? [videoUrl] : [mediaUrlForAsr, videoUrl];
 
     if (looksLikeOpenSpeechFlashEndpoint(asrApiUrl)) {
-      return this.transcribeViaOpenSpeechFlash(asrApiUrl, mediaUrlForAsr);
+      let lastError: unknown;
+      for (const candidateUrl of mediaUrlCandidates) {
+        try {
+          return await this.transcribeViaOpenSpeechFlash(asrApiUrl, candidateUrl);
+        } catch (error) {
+          lastError = error;
+          if (!this.isInvalidAudioUriError(error) || candidateUrl === mediaUrlCandidates[mediaUrlCandidates.length - 1]) {
+            throw error;
+          }
+        }
+      }
+      throw lastError instanceof Error ? lastError : new Error("OpenSpeech flash 转写失败");
     }
     if (looksLikeOpenSpeechSubmitEndpoint(asrApiUrl)) {
-      return this.transcribeViaOpenSpeechSubmit(asrApiUrl, mediaUrlForAsr);
+      let lastError: unknown;
+      for (const candidateUrl of mediaUrlCandidates) {
+        try {
+          return await this.transcribeViaOpenSpeechSubmit(asrApiUrl, candidateUrl);
+        } catch (error) {
+          lastError = error;
+          if (!this.isInvalidAudioUriError(error) || candidateUrl === mediaUrlCandidates[mediaUrlCandidates.length - 1]) {
+            throw error;
+          }
+        }
+      }
+      throw lastError instanceof Error ? lastError : new Error("OpenSpeech submit/query 转写失败");
     }
 
     const timeoutMs = Number(process.env.ASR_TIMEOUT_MS ?? 120000);
@@ -802,6 +852,15 @@ export class TranscriptPipeline {
     }
     const proxyUrl = this.mediaProxyService.createProxyUrl(videoUrl, baseUrlCandidate);
     return proxyUrl || videoUrl;
+  }
+
+  private isInvalidAudioUriError(error: unknown): boolean {
+    const message = error instanceof Error ? error.message.toLowerCase() : "";
+    return (
+      message.includes("invalid audio uri") ||
+      message.includes("audio download failed") ||
+      message.includes("45000006")
+    );
   }
 
   private pickTranscriptFromAsrResponse(data: Record<string, unknown>): string | undefined {
