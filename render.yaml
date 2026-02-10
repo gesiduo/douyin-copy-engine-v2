@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: douyin-copy-engine-v2
+    runtime: node
+    plan: free
+    region: singapore
+    buildCommand: npm ci && npm run build
+    startCommand: npm run start
+    healthCheckPath: /healthz
+    envVars:
+      - key: NODE_VERSION
+        value: 20
+      - key: ALLOW_MOCK_TRANSCRIPT
+        value: "false"
+      - key: ASR_TIMEOUT_MS
+        value: "120000"
+      - key: STYLE_SIMILARITY_THRESHOLD
+        value: "0.82"

@@ -1,0 +1,27 @@
+<view class="container">
+  <view class="card">
+    <view class="title">链接转写</view>
+    <view class="label">粘贴抖音分享文本</view>
+    <textarea
+      class="textarea"
+      value="{{shareText}}"
+      placeholder="粘贴包含抖音链接的分享内容"
+      bindinput="onShareInput"
+    />
+    <button class="button" bindtap="submitTask">开始转写</button>
+    <view class="status">状态：{{status || "未开始"}}</view>
+    <view class="error" tt:if="{{errorMessage}}">错误：{{errorMessage}}</view>
+  </view>
+
+  <view class="card" tt:if="{{transcriptText}}">
+    <view class="label">转写结果</view>
+    <view class="version">{{transcriptText}}</view>
+    <button class="button secondary" bindtap="copyTranscript">复制转写</button>
+    <button class="button secondary" bindtap="goRewrite">去生成三版本改写</button>
+    <button class="button secondary" bindtap="goProduct">去产品套框架</button>
+  </view>
+
+  <view class="card" tt:if="{{status === 'failed'}}">
+    <button class="button" bindtap="retry">失败重试</button>
+  </view>
+</view>

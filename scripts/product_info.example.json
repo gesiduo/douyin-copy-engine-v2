@@ -1,0 +1,18 @@
+{
+  "productName": "Your Product Name",
+  "category": "Your Product Category",
+  "sellingPoints": [
+    "Selling point 1",
+    "Selling point 2",
+    "Selling point 3"
+  ],
+  "targetAudience": "Your target audience",
+  "cta": "Your call to action.",
+  "forbiddenWords": [
+    "forbidden word 1",
+    "forbidden word 2"
+  ],
+  "complianceNotes": [
+    "compliance note 1"
+  ]
+}

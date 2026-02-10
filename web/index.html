@@ -1,0 +1,346 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Douyin Copy Engine V2</title>
+    <style>
+      :root {
+        --bg: #f7f7f8;
+        --card: #ffffff;
+        --line: #e5e7eb;
+        --text: #111827;
+        --muted: #6b7280;
+        --primary: #0f766e;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family: "PingFang SC", "Helvetica Neue", Arial, sans-serif;
+      }
+      main {
+        max-width: 980px;
+        margin: 0 auto;
+        padding: 24px 16px 36px;
+      }
+      h1 {
+        margin: 0 0 12px;
+        font-size: 26px;
+      }
+      .hint {
+        color: var(--muted);
+        margin: 0 0 16px;
+      }
+      .card {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 14px;
+        margin-bottom: 14px;
+      }
+      .row {
+        display: grid;
+        gap: 10px;
+        margin-bottom: 10px;
+      }
+      .row.two {
+        grid-template-columns: 1fr 1fr;
+      }
+      label {
+        font-size: 13px;
+        color: #374151;
+        display: block;
+        margin-bottom: 4px;
+      }
+      input,
+      textarea,
+      button {
+        font-size: 14px;
+        border-radius: 10px;
+      }
+      input,
+      textarea {
+        width: 100%;
+        box-sizing: border-box;
+        padding: 10px;
+        border: 1px solid #d1d5db;
+        background: #fff;
+      }
+      textarea {
+        min-height: 92px;
+        resize: vertical;
+      }
+      button {
+        border: 0;
+        color: #fff;
+        background: var(--primary);
+        padding: 10px 14px;
+        cursor: pointer;
+      }
+      button:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+      .status {
+        color: var(--muted);
+        margin-top: 8px;
+        min-height: 20px;
+      }
+      .out {
+        white-space: pre-wrap;
+        background: #0b1020;
+        color: #f8fafc;
+        border-radius: 10px;
+        padding: 10px;
+        margin-top: 10px;
+        font-size: 13px;
+        line-height: 1.5;
+      }
+      @media (max-width: 760px) {
+        .row.two {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Douyin Copy Engine V2</h1>
+      <p class="hint">云端测试页：粘贴抖音分享文案，先转写，再生成三版本改写或产品套框架文案。</p>
+
+      <section class="card">
+        <h3>1) 链接转写</h3>
+        <div class="row">
+          <div>
+            <label for="shareText">抖音分享文案</label>
+            <textarea id="shareText" placeholder="粘贴完整分享文案（包含 https://v.douyin.com/...）"></textarea>
+          </div>
+        </div>
+        <button id="btnTranscript">开始转写</button>
+        <div id="transcriptStatus" class="status"></div>
+        <div id="transcriptOut" class="out" style="display: none"></div>
+      </section>
+
+      <section class="card">
+        <h3>2) 三版本改写</h3>
+        <div class="row">
+          <div>
+            <label for="sourceText">原文案（可自动填入转写结果）</label>
+            <textarea id="sourceText"></textarea>
+          </div>
+        </div>
+        <button id="btnRewrite">生成三版本改写</button>
+        <div id="rewriteStatus" class="status"></div>
+        <div id="rewriteOut" class="out" style="display: none"></div>
+      </section>
+
+      <section class="card">
+        <h3>3) 产品套框架（三版本）</h3>
+        <div class="row two">
+          <div>
+            <label for="productName">产品名称</label>
+            <input id="productName" value="颜小萌甘蔗马蹄汁" />
+          </div>
+          <div>
+            <label for="category">品类</label>
+            <input id="category" value="饮品" />
+          </div>
+        </div>
+        <div class="row two">
+          <div>
+            <label for="targetAudience">目标人群</label>
+            <input id="targetAudience" value="经常外卖和聚餐的人群" />
+          </div>
+          <div>
+            <label for="cta">CTA</label>
+            <input id="cta" value="想要清爽解腻，现在就试试。" />
+          </div>
+        </div>
+        <div class="row two">
+          <div>
+            <label for="sellingPoints">卖点（每行一个，3-5条）</label>
+            <textarea id="sellingPoints">NFC原榨
+配料干净
+解腻清爽</textarea>
+          </div>
+          <div>
+            <label for="forbiddenWords">禁用词（每行一个，可空）</label>
+            <textarea id="forbiddenWords">最强
+根治</textarea>
+          </div>
+        </div>
+        <button id="btnProduct">生成产品化三版本</button>
+        <div id="productStatus" class="status"></div>
+        <div id="productOut" class="out" style="display: none"></div>
+      </section>
+    </main>
+
+    <script>
+      const $ = (id) => document.getElementById(id);
+      const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+      function parseLines(text) {
+        return text
+          .split(/\r?\n/)
+          .map((s) => s.trim())
+          .filter(Boolean);
+      }
+
+      function showStatus(el, text) {
+        el.textContent = text;
+      }
+
+      function showOut(el, text) {
+        el.style.display = "block";
+        el.textContent = text;
+      }
+
+      async function createTranscript(shareText) {
+        const resp = await fetch("/api/tasks", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            shareText,
+            clientRequestId: "web_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8),
+          }),
+        });
+        if (!resp.ok) throw new Error(await resp.text());
+        const data = await resp.json();
+        return data.taskId;
+      }
+
+      async function pollTranscript(taskId, statusEl) {
+        for (let i = 1; i <= 80; i += 1) {
+          const resp = await fetch("/api/tasks/" + encodeURIComponent(taskId));
+          const data = await resp.json();
+          showStatus(statusEl, "转写中...第 " + i + " 次轮询，状态: " + data.status);
+          if (data.status === "succeeded") return data;
+          if (data.status === "failed") throw new Error(data.errorMessage || data.errorCode || "transcript failed");
+          await sleep(1500);
+        }
+        throw new Error("转写超时");
+      }
+
+      async function createJob(url, payload) {
+        const resp = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        if (!resp.ok) throw new Error(await resp.text());
+        const data = await resp.json();
+        return data.jobId;
+      }
+
+      async function pollJob(jobId, statusEl, tag) {
+        for (let i = 1; i <= 80; i += 1) {
+          const resp = await fetch("/api/jobs/" + encodeURIComponent(jobId));
+          const data = await resp.json();
+          showStatus(statusEl, tag + "中...第 " + i + " 次轮询，状态: " + data.status);
+          if (data.status === "succeeded") return data;
+          if (data.status === "failed") throw new Error(data.errorMessage || data.errorCode || "job failed");
+          await sleep(1500);
+        }
+        throw new Error(tag + "超时");
+      }
+
+      $("btnTranscript").addEventListener("click", async () => {
+        const shareText = $("shareText").value.trim();
+        const statusEl = $("transcriptStatus");
+        const outEl = $("transcriptOut");
+        outEl.style.display = "none";
+        if (!shareText) {
+          showStatus(statusEl, "请先粘贴抖音分享文案");
+          return;
+        }
+        try {
+          $("btnTranscript").disabled = true;
+          showStatus(statusEl, "正在创建转写任务...");
+          const taskId = await createTranscript(shareText);
+          const result = await pollTranscript(taskId, statusEl);
+          $("sourceText").value = result.transcriptText || "";
+          showStatus(statusEl, "转写完成");
+          showOut(outEl, result.transcriptText || "");
+        } catch (e) {
+          showStatus(statusEl, "转写失败: " + (e?.message || String(e)));
+        } finally {
+          $("btnTranscript").disabled = false;
+        }
+      });
+
+      $("btnRewrite").addEventListener("click", async () => {
+        const sourceText = $("sourceText").value.trim();
+        const statusEl = $("rewriteStatus");
+        const outEl = $("rewriteOut");
+        outEl.style.display = "none";
+        if (!sourceText) {
+          showStatus(statusEl, "请先提供原文案（可先做转写）");
+          return;
+        }
+        try {
+          $("btnRewrite").disabled = true;
+          showStatus(statusEl, "创建改写任务...");
+          const jobId = await createJob("/api/copy/variants", {
+            sourceText,
+            mode: "rewrite",
+            variantCount: 3,
+            strictness: "strict",
+          });
+          const result = await pollJob(jobId, statusEl, "改写");
+          const text =
+            result.versions
+              .map((v, i) => `--- Version ${i + 1} ---\n${v}`)
+              .join("\n\n") + "\n\n===== QC =====\n" + JSON.stringify(result.qcReport || {}, null, 2);
+          showStatus(statusEl, "改写完成");
+          showOut(outEl, text);
+        } catch (e) {
+          showStatus(statusEl, "改写失败: " + (e?.message || String(e)));
+        } finally {
+          $("btnRewrite").disabled = false;
+        }
+      });
+
+      $("btnProduct").addEventListener("click", async () => {
+        const sourceText = $("sourceText").value.trim();
+        const statusEl = $("productStatus");
+        const outEl = $("productOut");
+        outEl.style.display = "none";
+        if (!sourceText) {
+          showStatus(statusEl, "请先提供原文案（可先做转写）");
+          return;
+        }
+        try {
+          $("btnProduct").disabled = true;
+          showStatus(statusEl, "创建产品套框架任务...");
+          const jobId = await createJob("/api/copy/product-variants", {
+            sourceText,
+            mode: "product_adapt",
+            variantCount: 3,
+            strictness: "strict",
+            productInfo: {
+              productName: $("productName").value.trim(),
+              category: $("category").value.trim(),
+              sellingPoints: parseLines($("sellingPoints").value).slice(0, 5),
+              targetAudience: $("targetAudience").value.trim(),
+              cta: $("cta").value.trim(),
+              forbiddenWords: parseLines($("forbiddenWords").value),
+              complianceNotes: [],
+            },
+          });
+          const result = await pollJob(jobId, statusEl, "产品改写");
+          const text =
+            result.versions
+              .map((v, i) => `--- Version ${i + 1} ---\n${v}`)
+              .join("\n\n") + "\n\n===== QC =====\n" + JSON.stringify(result.qcReport || {}, null, 2);
+          showStatus(statusEl, "产品改写完成");
+          showOut(outEl, text);
+        } catch (e) {
+          showStatus(statusEl, "产品改写失败: " + (e?.message || String(e)));
+        } finally {
+          $("btnProduct").disabled = false;
+        }
+      });
+    </script>
+  </body>
+</html>

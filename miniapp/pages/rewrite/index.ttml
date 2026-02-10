@@ -1,0 +1,27 @@
+<view class="container">
+  <view class="card">
+    <view class="title">三版本改写</view>
+    <view class="label">原文案</view>
+    <textarea
+      class="textarea"
+      value="{{sourceText}}"
+      placeholder="粘贴转写文案"
+      bindinput="onSourceInput"
+    />
+    <button class="button" bindtap="generateVariants">生成三版本</button>
+    <view class="status">状态：{{status || "未开始"}}</view>
+    <view class="error" tt:if="{{errorMessage}}">错误：{{errorMessage}}</view>
+  </view>
+
+  <view class="card" tt:for="{{versions}}" tt:key="index">
+    <view class="label">版本 {{index + 1}}</view>
+    <view class="version">{{item}}</view>
+    <button class="button secondary" data-index="{{index}}" bindtap="copyVersion">复制版本</button>
+  </view>
+
+  <view class="card" tt:if="{{qcReport}}">
+    <view class="label">QC 总结</view>
+    <view class="version">overallPassed: {{qcReport.overallPassed ? "true" : "false"}}</view>
+    <view class="version">allSellingPointsCovered: {{qcReport.allSellingPointsCovered ? "true" : "false"}}</view>
+  </view>
+</view>

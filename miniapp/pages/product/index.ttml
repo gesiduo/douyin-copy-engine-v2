@@ -1,0 +1,41 @@
+<view class="container">
+  <view class="card">
+    <view class="title">产品套框架</view>
+    <view class="label">原文案</view>
+    <textarea class="textarea" value="{{sourceText}}" data-field="sourceText" bindinput="onInput" />
+
+    <view class="label">产品名</view>
+    <input class="input" value="{{productName}}" data-field="productName" bindinput="onInput" />
+
+    <view class="label">品类</view>
+    <input class="input" value="{{category}}" data-field="category" bindinput="onInput" />
+
+    <view class="label">目标人群</view>
+    <input class="input" value="{{targetAudience}}" data-field="targetAudience" bindinput="onInput" />
+
+    <view class="label">CTA</view>
+    <input class="input" value="{{cta}}" data-field="cta" bindinput="onInput" />
+
+    <view class="label">卖点(3-5条，每行一条)</view>
+    <textarea class="textarea" value="{{sellingPointsText}}" data-field="sellingPointsText" bindinput="onInput" />
+
+    <view class="label">禁用词(可选，每行一条)</view>
+    <textarea class="textarea" value="{{forbiddenWordsText}}" data-field="forbiddenWordsText" bindinput="onInput" />
+
+    <button class="button" bindtap="generateProductVariants">生成产品化三版本</button>
+    <view class="status">状态：{{status || "未开始"}}</view>
+    <view class="error" tt:if="{{errorMessage}}">错误：{{errorMessage}}</view>
+  </view>
+
+  <view class="card" tt:for="{{versions}}" tt:key="index">
+    <view class="label">版本 {{index + 1}}</view>
+    <view class="version">{{item}}</view>
+    <button class="button secondary" data-index="{{index}}" bindtap="copyVersion">复制版本</button>
+  </view>
+
+  <view class="card" tt:if="{{qcReport}}">
+    <view class="label">QC 总结</view>
+    <view class="version">overallPassed: {{qcReport.overallPassed ? "true" : "false"}}</view>
+    <view class="version">allSellingPointsCovered: {{qcReport.allSellingPointsCovered ? "true" : "false"}}</view>
+  </view>
+</view>

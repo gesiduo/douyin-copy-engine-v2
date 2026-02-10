@@ -1,0 +1,10 @@
+{
+  "pages": [
+    "pages/transcript/index",
+    "pages/rewrite/index",
+    "pages/product/index"
+  ],
+  "window": {
+    "navigationBarTitleText": "文案引擎V2"
+  }
+}
