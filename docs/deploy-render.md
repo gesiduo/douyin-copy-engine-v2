@@ -34,6 +34,8 @@
 - `VOLCENGINE_ASR_TEXT_FIELD_PATH=result.text`
 - `ALLOW_MOCK_TRANSCRIPT=false`
 - `ASR_TIMEOUT_MS=120000`
+- `PUBLIC_BASE_URL=https://你的域名`
+- `ASR_MEDIA_PROXY_FORCE=false`（可选）
 - `STYLE_SIMILARITY_THRESHOLD=0.82`
 
 可选变量：
@@ -72,6 +74,10 @@ https://你的域名/
 2. `ASR_FAILED`
 - 检查 `VOLCENGINE_ASR_API_URL` 不能是 `.../chat/completions`。
 - 检查 ASR key 和资源 `VOLCENGINE_ASR_RESOURCE_ID` 是否有授权。
+- 如果错误里有 `Invalid audio URI` / `audio download failed`：
+  - 确认 `PUBLIC_BASE_URL` 已设置为当前 Render 域名；
+  - 重新部署后重试；
+  - 仍失败可临时设置 `ASR_MEDIA_PROXY_FORCE=true`。
 
 3. 转写超时
 - 将 `ASR_TIMEOUT_MS` 提高到 `180000` 再试。

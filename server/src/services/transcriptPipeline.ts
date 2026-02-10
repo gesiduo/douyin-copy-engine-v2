@@ -7,6 +7,7 @@ import type {
 import { randomUUID } from "node:crypto";
 import { InMemoryStore } from "../store/inMemoryStore.js";
 import { pickTextByPath } from "./volcengineClient.js";
+import { MediaProxyService } from "./mediaProxyService.js";
 
 const URL_REGEX = /(https?:\/\/[^\s]+)/i;
 const DOUYIN_URL_REGEX =
@@ -85,6 +86,17 @@ function isAwemePlayableApiUrl(url: string): boolean {
   return /aweme\.snssdk\.com\/aweme\/v1\/play/i.test(url);
 }
 
+export function isLikelyProtectedDouyinMediaUrl(url: string): boolean {
+  const lower = url.toLowerCase();
+  return (
+    lower.includes("aweme.snssdk.com/aweme/v1/play") ||
+    lower.includes("douyinvod.com/") ||
+    lower.includes("bytecdn.cn/") ||
+    lower.includes("ibytedtos.com/") ||
+    lower.includes("zjcdn.com/")
+  );
+}
+
 function extractRouterDataJson(html: string): string | undefined {
   const match = html.match(/window\._ROUTER_DATA\s*=\s*([\s\S]*?)<\/script>/i);
   if (!match?.[1]) {
@@ -131,9 +143,12 @@ export function extractShareUrl(shareText: string): string | undefined {
 }
 
 export class TranscriptPipeline {
-  constructor(private readonly store: InMemoryStore) {}
+  constructor(
+    private readonly store: InMemoryStore,
+    private readonly mediaProxyService?: MediaProxyService,
+  ) {}
 
-  createTask(input: CreateTaskRequest): CreateTaskResponse {
+  createTask(input: CreateTaskRequest, options?: { baseUrl?: string }): CreateTaskResponse {
     const existingTaskId = this.store.getTaskIdByRequestId(input.clientRequestId);
     if (existingTaskId) {
       return { taskId: existingTaskId, status: "queued" };
@@ -142,9 +157,10 @@ export class TranscriptPipeline {
     const job = this.store.createJob("transcript", {
       shareText: input.shareText,
       clientRequestId: input.clientRequestId,
+      baseUrl: options?.baseUrl,
     });
     this.store.setTaskIdByRequestId(input.clientRequestId, job.jobId);
-    void this.process(job.jobId, input.shareText);
+    void this.process(job.jobId, input.shareText, options?.baseUrl);
     return { taskId: job.jobId, status: "queued" };
   }
 
@@ -162,13 +178,13 @@ export class TranscriptPipeline {
     };
   }
 
-  private async process(taskId: string, shareText: string): Promise<void> {
+  private async process(taskId: string, shareText: string, baseUrl?: string): Promise<void> {
     try {
       this.store.updateJobStatus(taskId, "resolving");
       const rawUrl = this.extractUrl(shareText);
       const resolvedVideoUrl = await this.resolveVideoUrl(rawUrl, shareText);
       this.store.updateJobStatus(taskId, "transcribing");
-      const transcriptText = await this.transcribe(resolvedVideoUrl, shareText);
+      const transcriptText = await this.transcribe(resolvedVideoUrl, shareText, baseUrl);
       this.store.updateJobStatus(taskId, "succeeded", {
         transcriptText,
       });
@@ -247,7 +263,7 @@ export class TranscriptPipeline {
     );
   }
 
-  private async transcribe(videoUrl: string, shareText: string): Promise<string> {
+  private async transcribe(videoUrl: string, shareText: string, baseUrl?: string): Promise<string> {
     const asrApiUrl = process.env.VOLCENGINE_ASR_API_URL || process.env.ASR_API_URL;
     const asrApiKey = process.env.VOLCENGINE_ASR_API_KEY || process.env.ASR_API_KEY;
 
@@ -267,11 +283,13 @@ export class TranscriptPipeline {
       );
     }
 
+    const mediaUrlForAsr = this.prepareAsrMediaUrl(videoUrl, asrApiUrl, baseUrl);
+
     if (looksLikeOpenSpeechFlashEndpoint(asrApiUrl)) {
-      return this.transcribeViaOpenSpeechFlash(asrApiUrl, videoUrl);
+      return this.transcribeViaOpenSpeechFlash(asrApiUrl, mediaUrlForAsr);
     }
     if (looksLikeOpenSpeechSubmitEndpoint(asrApiUrl)) {
-      return this.transcribeViaOpenSpeechSubmit(asrApiUrl, videoUrl);
+      return this.transcribeViaOpenSpeechSubmit(asrApiUrl, mediaUrlForAsr);
     }
 
     const timeoutMs = Number(process.env.ASR_TIMEOUT_MS ?? 120000);
@@ -286,10 +304,10 @@ export class TranscriptPipeline {
           ...(asrApiKey ? { Authorization: `Bearer ${asrApiKey}` } : {}),
         },
         body: JSON.stringify({
-          videoUrl,
-          video_url: videoUrl,
-          url: videoUrl,
-          audioUrl: videoUrl,
+          videoUrl: mediaUrlForAsr,
+          video_url: mediaUrlForAsr,
+          url: mediaUrlForAsr,
+          audioUrl: mediaUrlForAsr,
           language: "zh",
           model: process.env.VOLCENGINE_ASR_MODEL,
         }),
@@ -770,6 +788,20 @@ export class TranscriptPipeline {
     } finally {
       clearTimeout(timer);
     }
+  }
+
+  private prepareAsrMediaUrl(videoUrl: string, asrApiUrl: string, baseUrl?: string): string {
+    const explicitBaseUrl = process.env.PUBLIC_BASE_URL?.trim();
+    const baseUrlCandidate = explicitBaseUrl || baseUrl;
+    const shouldForceProxy = process.env.ASR_MEDIA_PROXY_FORCE?.toLowerCase() === "true";
+    const openspeechMode =
+      looksLikeOpenSpeechFlashEndpoint(asrApiUrl) || looksLikeOpenSpeechSubmitEndpoint(asrApiUrl);
+    const shouldUseProxy = shouldForceProxy || (openspeechMode && isLikelyProtectedDouyinMediaUrl(videoUrl));
+    if (!shouldUseProxy || !this.mediaProxyService) {
+      return videoUrl;
+    }
+    const proxyUrl = this.mediaProxyService.createProxyUrl(videoUrl, baseUrlCandidate);
+    return proxyUrl || videoUrl;
   }
 
   private pickTranscriptFromAsrResponse(data: Record<string, unknown>): string | undefined {

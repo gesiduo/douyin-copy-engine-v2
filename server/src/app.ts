@@ -6,6 +6,7 @@ import { registerTaskRoutes } from "./routes/tasks.js";
 import { registerCopyRoutes } from "./routes/copy.js";
 import { InMemoryStore } from "./store/inMemoryStore.js";
 import { TranscriptPipeline } from "./services/transcriptPipeline.js";
+import { MediaProxyService } from "./services/mediaProxyService.js";
 
 export function createApp() {
   const app = express();
@@ -17,10 +18,12 @@ export function createApp() {
   app.use(express.static(webDir));
 
   const store = new InMemoryStore();
-  const transcriptPipeline = new TranscriptPipeline(store);
+  const mediaProxyService = new MediaProxyService();
+  const transcriptPipeline = new TranscriptPipeline(store, mediaProxyService);
 
   registerTaskRoutes(app, transcriptPipeline);
   registerCopyRoutes(app, store);
+  app.get("/api/media-proxy/:token", mediaProxyService.handleRequest);
 
   app.get("/healthz", (_req, res) => {
     res.json({

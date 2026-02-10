@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   extractShareUrl,
   extractVideoUrlFromDouyinRouterData,
+  isLikelyProtectedDouyinMediaUrl,
 } from "../src/services/transcriptPipeline.js";
 
 test("extractShareUrl should parse normal https url", () => {
@@ -69,4 +70,12 @@ test("extractVideoUrlFromDouyinRouterData should fallback to video_layout path",
 
   const videoUrl = extractVideoUrlFromDouyinRouterData(routerData);
   assert.equal(videoUrl, "https://aweme.snssdk.com/aweme/v1/play/?video_id=def456");
+});
+
+test("isLikelyProtectedDouyinMediaUrl should detect aweme play urls", () => {
+  assert.equal(isLikelyProtectedDouyinMediaUrl("https://aweme.snssdk.com/aweme/v1/play/?video_id=abc"), true);
+});
+
+test("isLikelyProtectedDouyinMediaUrl should ignore generic mp3 urls", () => {
+  assert.equal(isLikelyProtectedDouyinMediaUrl("https://example.com/audio/test.mp3"), false);
 });

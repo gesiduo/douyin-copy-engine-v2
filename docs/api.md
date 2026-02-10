@@ -147,6 +147,8 @@ Response `202`:
 - `ASR_TIMEOUT_MS`（可选，默认 `120000`）
 - `STYLE_SIMILARITY_THRESHOLD` 默认 `0.82`
 - `ALLOW_MOCK_TRANSCRIPT` 默认 `false`（为 `true` 时未配置 ASR 会返回模拟文本）
+- `PUBLIC_BASE_URL`（云端建议必填，例如 `https://your-app.onrender.com`，用于 ASR 媒体代理）
+- `ASR_MEDIA_PROXY_FORCE`（可选，默认 `false`，为 `true` 时所有 ASR 请求都走媒体代理）
 
 ## 供应商说明（火山云）
 - 文案生成默认优先走火山云 Ark（`VOLCENGINE_LLM_*`），未配置时回退本地规则生成。
@@ -160,3 +162,7 @@ Response `202`:
 - 如果你使用 OpenSpeech 标准版异步提交，`VOLCENGINE_ASR_API_URL` 可设置为：
   `https://openspeech.bytedance.com/api/v3/auc/bigmodel/submit`
   后端会自动轮询对应 `.../query` 获取最终文本。
+- 如果报错 `Invalid audio URI` / `audio download failed`，优先检查：
+  1. `PUBLIC_BASE_URL` 是否填写成可公网访问的服务域名；
+  2. 是否已重新部署使媒体代理生效；
+  3. 必要时设置 `ASR_MEDIA_PROXY_FORCE=true` 再试。

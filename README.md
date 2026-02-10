@@ -23,6 +23,8 @@ cp /Users/lizhan/Desktop/sandbox/.env.example /Users/lizhan/Desktop/sandbox/.env
 - `VOLCENGINE_RESOLVER_API_URL`（可选）
 - `VOLCENGINE_RESOLVER_VIDEO_URL_FIELD_PATH`（可选）
 - `ALLOW_MOCK_TRANSCRIPT=false`（默认，未配置 ASR 时直接报错）
+- `PUBLIC_BASE_URL`（云端建议填写你的公网域名，例如 `https://your-app.onrender.com`）
+- `ASR_MEDIA_PROXY_FORCE=false`（可选，设为 `true` 时强制所有 ASR 请求走媒体代理）
 
 注意：`VOLCENGINE_ASR_API_URL` 不能填 Ark 聊天接口 `.../chat/completions`。
 OpenSpeech 鉴权支持两种方式：
@@ -72,11 +74,19 @@ Health Check Path: /healthz
 - `VOLCENGINE_ASR_TEXT_FIELD_PATH=result.text`
 - `ALLOW_MOCK_TRANSCRIPT=false`
 - `ASR_TIMEOUT_MS=120000`
+- `PUBLIC_BASE_URL=https://你的域名`
+- `ASR_MEDIA_PROXY_FORCE=false`
 5. 部署成功后：
 - 健康检查：`https://你的域名/healthz`
 - 网页测试入口：`https://你的域名/`
 
 详细步骤见：`/Users/lizhan/Desktop/sandbox/docs/deploy-render.md`
+
+## ASR 常见报错（Invalid audio URI）
+如果看到类似 `Invalid audio URI` / `audio download failed`：
+1. 在 Render 环境变量补上 `PUBLIC_BASE_URL=https://你的域名`；
+2. 点击手动重启或重新部署；
+3. 仍失败时再设 `ASR_MEDIA_PROXY_FORCE=true` 强制走媒体代理。
 
 ## 目录
 - `/Users/lizhan/Desktop/sandbox/server`：API 服务
