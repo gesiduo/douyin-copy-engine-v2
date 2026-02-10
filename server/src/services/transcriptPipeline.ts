@@ -796,7 +796,7 @@ export class TranscriptPipeline {
     const shouldForceProxy = process.env.ASR_MEDIA_PROXY_FORCE?.toLowerCase() === "true";
     const openspeechMode =
       looksLikeOpenSpeechFlashEndpoint(asrApiUrl) || looksLikeOpenSpeechSubmitEndpoint(asrApiUrl);
-    const shouldUseProxy = shouldForceProxy || (openspeechMode && isLikelyProtectedDouyinMediaUrl(videoUrl));
+    const shouldUseProxy = shouldForceProxy || openspeechMode || isLikelyProtectedDouyinMediaUrl(videoUrl);
     if (!shouldUseProxy || !this.mediaProxyService) {
       return videoUrl;
     }

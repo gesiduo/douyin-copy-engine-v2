@@ -18,7 +18,8 @@ function buildBaseUrlFromRequest(req: Request): string | undefined {
   if (!host) {
     return undefined;
   }
-  const proto = forwardedProto || req.protocol || "http";
+  const inferredProto = host.toLowerCase().includes(".onrender.com") ? "https" : undefined;
+  const proto = forwardedProto || inferredProto || req.protocol || "http";
   return `${proto}://${host}`.replace(/\/+$/u, "");
 }
 
